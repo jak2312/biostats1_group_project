@@ -1,0 +1,109 @@
+---
+title: "group_project_my_fork"
+author: "Jared Klug"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+```{r read_df}
+hatecrimes_df = read_csv("./data/HateCrimes.csv") %>% 
+  mutate(
+    unemployment = factor(unemployment),
+    urbanization = factor(urbanization),
+    hate_crimes_per_100k_splc = as.numeric(hate_crimes_per_100k_splc)
+  ) %>% 
+  drop_na()
+```
+
+```{r checking linearity}
+
+test_model = lm(hate_crimes_per_100k_splc ~ . -state, data = hatecrimes_df)
+
+summary(test_model)
+
+par(mfrow = c(2, 2))
+plot(test_model)
+
+step(test_model, direction = "both")
+
+hypoth_model = lm(formula = hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree + 
+    gini_index, data = hatecrimes_df)
+summary(hypoth_model)
+
+```
+
+#After using automated step process of both backwards and forwards, concluding variables are only percent w/ highschool degree and gini index. 
+
+```{r checking interactions}
+
+qplot(x = gini_index, y = hate_crimes_per_100k_splc, data = hatecrimes_df, color = unemployment) +
+  geom_smooth(method = "lm", se = FALSE)
+
+qplot(x = gini_index, y = hate_crimes_per_100k_splc, data = hatecrimes_df, color = urbanization) +
+  geom_smooth(method = "lm", se = FALSE)
+
+qplot(x = perc_population_with_high_school_degree, y = hate_crimes_per_100k_splc, data = hatecrimes_df, color = unemployment) +
+  geom_smooth(method = "lm", se = FALSE)
+
+qplot(x = perc_population_with_high_school_degree, y = hate_crimes_per_100k_splc, data = hatecrimes_df, color = urbanization) +
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+
+# Interactions on all fronts: gonna make model and check summary before stratifying
+
+```{r}
+int_unemployment_model = lm(hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree*unemployment + 
+    gini_index*unemployment, data = hatecrimes_df)
+ 
+
+int_unemployment_model %>% summary()
+
+int_urban_model = lm(hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree*urbanization + 
+    gini_index*urbanization, data = hatecrimes_df)
+
+int_urban_model %>% summary()
+```
+
+#Stratification
+
+```{r}
+low_urban_df = hatecrimes_df %>% 
+  filter(urbanization == "low")
+
+high_urban_df = hatecrimes_df %>% 
+  filter(urbanization == "high")
+
+low_unemploy_df = hatecrimes_df %>% 
+  filter(unemployment == "low")
+
+high_unemploy_df = hatecrimes_df %>% 
+  filter(unemployment == "high")
+```
+
+```{r}
+#Low urabnization
+lm(formula = hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree + 
+    gini_index, data = low_urban_df) %>% 
+  summary()
+
+#High urbanization
+lm(formula = hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree + 
+    gini_index, data = high_urban_df) %>% 
+  summary()
+
+#low unemployment
+lm(formula = hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree + 
+    gini_index, data = low_unemploy_df) %>% 
+  summary()
+
+#high unemployment
+lm(formula = hate_crimes_per_100k_splc ~ perc_population_with_high_school_degree + 
+    gini_index, data = high_unemploy_df) %>% 
+  summary()
+```
+
+# The two predictors stayed significant in all models except for low urbanization areas.
